@@ -1,0 +1,8 @@
+{
+"shell-version": ["3.4"],
+"uuid": "gps-indicator@orest.tarasiuk.tum.de",
+"name": "GPS Indicator",
+"description": "Display an indicator showing the current GPS status",
+"url": "https://gitorious.org/gs-extensions/gps-indicator",
+"version": 1
+}

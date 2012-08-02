@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-notifications-alert">
+    <schema path="/org/gnome/shell/extensions/gps-indicator/" id="org.gnome.shell.extensions.gps-indicator">
+        <key name="icon" type="b">
+            <default>false</default>
+            <summary>Show icon</summary>
+            <description>Show an icon next to the status text</description>
+        </key>
+        <key name="satshow" type="b">
+            <default>true</default>
+            <summary>Show satellite number</summary>
+            <description>Show the number of available satellites</description>
+        </key>
+        <key name="hdopshow" type="b">
+            <default>true</default>
+            <summary>Show HDOP</summary>
+            <description>Show the horizontal dilution of precision coefficient</description>
+        </key>
+        <key name="gdopshow" type="b">
+            <default>false</default>
+            <summary>Show GDOP</summary>
+            <description>Show the geometric dilution of precision coefficient</description>
+        </key>
+
+        <key name="enable" type="s">
+            <default>"gksu service gpsd start"</default>
+            <summary>GPS enable command</summary>
+            <description>The command used to enable your GPS</description>
+        </key>
+        <key name="disable" type="s">
+            <default>"gksu service gpsd stop"</default>
+            <summary>GPS disable command</summary>
+            <description>The command used to disable your GPS</description>
+        </key>
+        <key name="sattext" type="s">
+            <default>"Sat: "</default>
+            <summary>GPS satellites text</summary>
+            <description>The text shown in the panel before the satellite number</description>
+        </key>
+        <key name="hdoptext" type="s">
+            <default>"H: "</default>
+            <summary>HDOP text</summary>
+            <description>The text shown in the panel before the horizontal dilution of precision coefficient</description>
+        </key>
+        <key name="gdoptext" type="s">
+            <default>"G: "</default>
+            <summary>GDOP text</summary>
+            <description>The text shown in the panel before the geometric dilution of precision coefficient</description>
+        </key>
+        <key name="refinterval" type="s">
+            <default>"15"</default>
+            <summary>Refresh interval [s]</summary>
+            <description>The interval between polls to gpsd</description>
+        </key>
+    </schema>
+</schemalist>
