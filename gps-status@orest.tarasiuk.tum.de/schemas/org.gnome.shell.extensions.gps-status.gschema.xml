@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="gnome-shell-notifications-alert">
-    <schema path="/org/gnome/shell/extensions/gps-indicator/" id="org.gnome.shell.extensions.gps-indicator">
+    <schema path="/org/gnome/shell/extensions/gps-status/" id="org.gnome.shell.extensions.gps-status">
         <key name="icon" type="b">
             <default>false</default>
             <summary>Show icon</summary>

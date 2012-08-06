@@ -1,0 +1,10 @@
+{
+    "uuid": "gps-status@orest.tarasiuk.tum.de",
+    "version": 2,
+    "shell-version": ["3.4"],
+    "name": "GPS Status",
+    "description": "Display an indicator showing the current GPS status",
+    "url": "https://gitorious.org/gs-extensions/gps-status",
+    "settings-schema": "org.gnome.shell.extensions.gps-status",
+    "gettext-domain": "gnome-shell-extensions"
+}
