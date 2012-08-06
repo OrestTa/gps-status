@@ -16,20 +16,14 @@
  * You should have received a copy of the GNU General Public License
  * along with GSEGI.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Most of this code was forked from media-player-indicator:
- * <https://extensions.gnome.org/extension/55/media-player-indicator/>
- *
  */
 
 const Gtk = imports.gi.Gtk;
 const Lang = imports.lang;
-
+const ExtensionUtils = imports.misc.extensionUtils;
+const Convenience = ExtensionUtils.getCurrentExtension().imports.convenience;
 const Gettext = imports.gettext.domain("gps-indicator");
 const _ = Gettext.gettext;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Lib = Me.imports.lib;
 
 let settings;
 let boolSettings;
@@ -101,8 +95,8 @@ function createStringSetting(setting) {
  */
 
 function init() {
-    Lib.initTranslations(Me);
-    settings = Lib.getSettings(Me);
+    Convenience.initTranslations();
+    settings = Convenience.getSettings();
 
     boolSettings = {
         /*icon: {
