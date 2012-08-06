@@ -262,16 +262,15 @@ gps_indicator.prototype = {
             dInStr = Gio.DataInputStream.new(inStr);
 
             dInStr.read_line(null); // VERSION
-
             outStr.write('?WATCH={"enable":true,"json":false};', null);
             dInStr.read_line(null); // DEVICES
-            dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // WATCH
+            dInStr.read_line(null); // WATCH
 
             let written = outStr.write('?POLL;', null);
             if (written > -1) {
                 dInStr.read_line_async(0, null, this._refresh_gps_cb, written);
+                connected = true;
             }
-            connected = true;
         }
     },
 
