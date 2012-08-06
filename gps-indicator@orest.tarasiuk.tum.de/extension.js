@@ -21,6 +21,7 @@
 const St = imports.gi.St;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
+const DBus = imports.dbus;
 
 const Lang = imports.lang;
 const PanelMenu = imports.ui.panelMenu;
@@ -47,12 +48,11 @@ const SETTING_HDOPTEXT = "hdoptext";
 const SETTING_GDOPTEXT = "gdoptext";
 const SETTING_REFINTRVL = "refinterval";
 
-let settings;
-let indicator;
+let settings, indicator;
 let event=null;
 let event2=null;
 let newLabel=" ";
-let success, pid;
+let connected, receiving, sockCl, sockCon, outStr, inStr, dInStr;
 let satshow, hdopshow, gdopshow, sattext, hdoptext, gdoptext, refinterval;
 
 function gps_indicator() {
@@ -218,97 +218,119 @@ gps_indicator.prototype = {
 
     _refresh_gps: function() {
         //global.log("GPS Icon Extension: Refreshing GPS");
-
-        if (GLib.spawn_command_line_sync("pgrep gpsd")[1] == ""){
-            //global.log("GPS Icon Extension: GPSd not running");
-            newLabel = "GPS off";
-            this.statusLabel.set_text(newLabel);
+        if (connected) {
+            let written = outStr.write('?POLL;', null);
+            if (written > -1) {
+                dInStr.read_line_async(0, null, this._refresh_gps_cb, null);
+            }
+            else {
+                connected = false;
+                this._connect_gpsd();
+            }
         }
         else {
-            if (newLabel == "GPS off"){
-                newLabel = "Waiting for data";
-                this.statusLabel.set_text(newLabel);
+            this._connect_gpsd();
+        }
+    },
+
+    _connect_gpsd: function() {
+        sockCl = new Gio.SocketClient();
+        sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
+        if (sockCon == null) {
+            newLabel = "GPS off";
+            this.statusLabel.set_text(newLabel);
+            this._update_menu();
+        }
+        else {
+            newLabel = "Connecting";
+            this.statusLabel.set_text(newLabel);
+            this._update_menu();
+
+            outStr = sockCon.get_output_stream();
+            inStr = sockCon.get_input_stream();
+            dInStr = Gio.DataInputStream.new(inStr);
+
+            dInStr.read_line(null); // VERSION
+            // dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // VERSION
+
+            outStr.write('?WATCH={"enable":true,"json":false};', null);
+            dInStr.read_line(null); // DEVICES
+            // dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // DEVICES
+            // dInStr.read_line(null); // WATCH
+            dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // WATCH
+
+            let written = outStr.write('?POLL;', null);
+            if (written > -1) {
+                dInStr.read_line_async(0, null, this._refresh_gps_cb, written);
             }
-            if (GLib.spawn_command_line_sync("pgrep gpsd_p_client")[1] == ""){
-                //global.log("GPS Icon Extension: GPSd client not running");
-                //let pclient = GLib.spawn_command_line_sync(
-                //    MyDir + "/gpsd_p_client.py");
-                let pclient_command = MyDir + "/gpsd_p_client.py";
+            connected = true;
+        }
+    },
 
-                [success, pid] = GLib.spawn_async(
-                    null,
-                    [pclient_command],
-                    null,
-                    GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                    null
-                    );
-                if (success && pid !== 0)
-                {
-                    // Wait for answer
-                    //global.log("created process, pid=" + pid);
-                    GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
-                        GLib.spawn_close_pid(pid);
-                        //global.log("process completed, status=" + status);
-                        let pclient = GLib.file_get_contents("/tmp/python_gpsd_tmp_file");
-                        if (pclient[0]){
-                            //global.log("GPS Icon Extension: pclient " + pclient[1]);
-                            let gpsdata = String(pclient[1]).split(" ");
-                            let satNo = -2;
-                            if (gpsdata.length >= 0) {
-                                satNo = gpsdata[0];
-                            }
-                            let hdop = -2.0
-                            if (gpsdata.length > 0) {
-                                hdop = gpsdata[1];
-                            }
-                            let gdop = -2.0
-                            if (gpsdata.length > 1) {
-                                gdop = gpsdata[2];
-                            }
+    _refresh_gps_cb_dummy: function(object, res, data) {
+        dInStr.read_line_finish(res, object);
+    },
 
-                            newLabel = "";
-                            if (satshow) {
-                                if (satNo > -1 && !isNaN(parseInt(satNo))){
-                                    newLabel = newLabel + sattext + satNo + " ";
-                                }
-                                else {
-                                    newLabel = newLabel + sattext + "? ";
-                                }
-                            }
-                            if (hdopshow) {
-                                if (hdop > -1.0 && !isNaN(parseFloat(hdop))){
-                                    newLabel = newLabel + hdoptext +
-                                    parseFloat(hdop).toFixed(1) + " ";
-                                }
-                                else {
-                                    newLabel = newLabel + hdoptext + "? ";
-                                }
-                            }
-                            if (gdopshow) {
-                                if (gdop > -1.0 && !isNaN(parseFloat(gdop))){
-                                    newLabel = newLabel + gdoptext +
-                                    parseFloat(gdop).toFixed(1);
-                                }
-                                else {
-                                    newLabel = newLabel + gdoptext + "? ";
-                                }
-                            }
-                            if (newLabel == "" ||
-                                newLabel.indexOf("undefined") > -1){
-                                newLabel = "No GPS data";
-                            }
-                            indicator.statusLabel.set_text(newLabel);
-                            indicator._update_menu();
-                        }
-                    });
-                }
-                else
-                {
-                    global.log("GPS Icon Extension: failed process creation");
-                    newLabel = "No GPS data";
-                }
+    _refresh_gps_cb: function(object, res, data) {
+        let gpsData = dInStr.read_line_finish(res, object).toString();
+        let hdop, gdop, satNo;
+
+        let indexSat = gpsData.match(/"used":true/g);
+        if (indexSat !== null) {
+            satNo = indexSat.length;
+        }
+        else {
+            satNo = 0;
+        }
+
+        // "hdop":4.07,"gdop":10.59,"pdop":8.56
+        let indexHdop = gpsData.search("hdop");
+        if (indexHdop !== -1) {
+            hdop = gpsData.slice(indexHdop + 6, indexHdop + 6 + 7)
+            hdop = hdop.split(",")[0];
+        }
+
+        let indexGdop = gpsData.search("gdop");
+        if (indexGdop !== -1) {
+            gdop = gpsData.slice(indexGdop + 6, indexGdop + 6 + 7)
+            gdop = gdop.split(",")[0];
+        }
+
+        newLabel = "";
+        if (satshow) {
+            if (!isNaN(satNo)){
+                newLabel = newLabel + sattext + satNo + " ";
+            }
+            else {
+                newLabel = newLabel + sattext + "? ";
             }
         }
+        if (hdopshow) {
+            if (!isNaN(parseFloat(hdop))){
+                newLabel = newLabel + hdoptext +
+                parseFloat(hdop).toFixed(1) + " ";
+            }
+            else {
+                newLabel = newLabel + hdoptext + "? ";
+            }
+        }
+        if (gdopshow) {
+            if (!isNaN(parseFloat(gdop))){
+                newLabel = newLabel + gdoptext +
+                parseFloat(gdop).toFixed(1);
+            }
+            else {
+                newLabel = newLabel + gdoptext + "? ";
+            }
+        }
+        if (newLabel == "" ||
+            newLabel.indexOf("undefined") > -1){
+            newLabel = "No GPS data";
+        }
+        //        this.statusLabel.set_text(newLabel);
+        //        this._update_menu();
+        indicator.statusLabel.set_text(newLabel);
+        indicator._update_menu();
     },
 
     _enable_gps: function() {
@@ -324,8 +346,6 @@ gps_indicator.prototype = {
 
     _disable_gps: function() {
         let disable_setting = settings.get_string(SETTING_DISABLE);
-        //global.log("Killing PID: " + pid);
-        //global.log(GLib.spawn_command_line_async("kill -9 " + pid));
         let disabled = GLib.spawn_command_line_async(disable_setting);
         if (disabled){
             this.statusLabel.set_text("GPS disabled!");
@@ -337,12 +357,12 @@ gps_indicator.prototype = {
 }
 
 function init() {
-    global.log("GPS Icon Extension: Initialising");
+    //global.log("GPS Icon Extension: Initialising");
     settings = Lib.getSettings(Me);
 }
 
 function enable() {
-    global.log("GPS Icon Extension: Enabling");
+    // global.log("GPS Icon Extension: Enabling");
     indicator = new gps_indicator();
     Main.panel.addToStatusArea("gps", indicator);
     let icon_setting = settings.get_boolean(SETTING_ICON);
@@ -353,7 +373,7 @@ function enable() {
 }
 
 function disable() {
-    global.log("GPS Icon Extension: Disabling");
+    // global.log("GPS Icon Extension: Disabling");
     let icon_setting = settings.get_boolean(SETTING_ICON);
     if (icon_setting) {
         Main.panel._rightBox.remove_child(indicator._button);
@@ -363,4 +383,7 @@ function disable() {
     Mainloop.source_remove(event2);
     indicator = null;
     settings = null;
+    sockCon.close(null);
+    sockCon = null;
+    sockCl = null;
 }
