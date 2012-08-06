@@ -18,29 +18,24 @@
  *
  */
 
-const St = imports.gi.St;
-const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const DBus = imports.dbus;
-
+const Gio = imports.gi.Gio;
+const GLib = imports.gi.GLib;
+const St = imports.gi.St;
 const Lang = imports.lang;
+const Mainloop = imports.mainloop;
+const ExtensionUtils = imports.misc.extensionUtils;
+const Util = imports.misc.util;
+const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
-const Util = imports.misc.util;
-const Mainloop = imports.mainloop;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Lib = Me.imports.lib;
-const MyDir = Me.dir.get_child("./").get_path();
+const Tweener = imports.ui.tweener;
+const Convenience = ExtensionUtils.getCurrentExtension().imports.convenience;
 
 const SETTING_ICON = "icon";
 const SETTING_SATSHOW = "satshow";
 const SETTING_HDOPSHOW = "hdopshow";
 const SETTING_GDOPSHOW = "gdopshow";
-
 const SETTING_ENABLE = "enable";
 const SETTING_DISABLE = "disable";
 const SETTING_SATTEXT = "sattext";
@@ -210,15 +205,17 @@ gps_indicator.prototype = {
     _refresh_gps_in: function(s) {
         event2 = GLib.timeout_add_seconds(0, s, Lang.bind(this, function () {
             this._update_menu();
+            this.statusLabel.set_text(newLabel);
             this._refresh_gps();
             this._update_menu();
+            this.statusLabel.set_text(newLabel);
             return false;
         }));
     },
 
     _refresh_gps: function() {
         //global.log("GPS Icon Extension: Refreshing GPS");
-        if (connected) {
+        if (connected && outStr !== null) {
             let written = outStr.write('?POLL;', null);
             if (written > -1) {
                 dInStr.read_line_async(0, null, this._refresh_gps_cb, null);
@@ -233,9 +230,23 @@ gps_indicator.prototype = {
         }
     },
 
+    _disconnect_gpsd: function() {
+        connected = false;
+        if (dInStr !== null) dInStr.clear_pending();
+        if (dInStr !== null) dInStr.close(null);
+        if (inStr !== null) inStr.close(null);
+        if (outStr !== null) outStr.close(null);
+        if (sockCon !== null) sockCon.close(null);
+        if (sockCon !== null) sockCon = null;
+        sockCl = null;
+    },
+
     _connect_gpsd: function() {
         sockCl = new Gio.SocketClient();
-        sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
+        try {
+            sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
+        }
+        catch(e){}
         if (sockCon == null) {
             newLabel = "GPS off";
             this.statusLabel.set_text(newLabel);
@@ -251,12 +262,9 @@ gps_indicator.prototype = {
             dInStr = Gio.DataInputStream.new(inStr);
 
             dInStr.read_line(null); // VERSION
-            // dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // VERSION
 
             outStr.write('?WATCH={"enable":true,"json":false};', null);
             dInStr.read_line(null); // DEVICES
-            // dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // DEVICES
-            // dInStr.read_line(null); // WATCH
             dInStr.read_line_async(0, null, this._refresh_gps_cb_dummy, null); // WATCH
 
             let written = outStr.write('?POLL;', null);
@@ -334,6 +342,7 @@ gps_indicator.prototype = {
     },
 
     _enable_gps: function() {
+        connected = false;
         let enable_setting = settings.get_string(SETTING_ENABLE);
         let enabled = GLib.spawn_command_line_async(enable_setting);
         if (enabled){
@@ -345,6 +354,7 @@ gps_indicator.prototype = {
     },
 
     _disable_gps: function() {
+        this._disconnect_gpsd();
         let disable_setting = settings.get_string(SETTING_DISABLE);
         let disabled = GLib.spawn_command_line_async(disable_setting);
         if (disabled){
@@ -358,11 +368,11 @@ gps_indicator.prototype = {
 
 function init() {
     //global.log("GPS Icon Extension: Initialising");
-    settings = Lib.getSettings(Me);
+    settings = Convenience.getSettings();
 }
 
 function enable() {
-    // global.log("GPS Icon Extension: Enabling");
+    connected = false;
     indicator = new gps_indicator();
     Main.panel.addToStatusArea("gps", indicator);
     let icon_setting = settings.get_boolean(SETTING_ICON);
@@ -373,17 +383,15 @@ function enable() {
 }
 
 function disable() {
-    // global.log("GPS Icon Extension: Disabling");
-    let icon_setting = settings.get_boolean(SETTING_ICON);
-    if (icon_setting) {
-        Main.panel._rightBox.remove_child(indicator._button);
-    }
-    indicator.destroy();
-    Mainloop.source_remove(event);
-    Mainloop.source_remove(event2);
-    indicator = null;
-    settings = null;
-    sockCon.close(null);
-    sockCon = null;
-    sockCl = null;
+    try {
+        let icon_setting = settings.get_boolean(SETTING_ICON);
+        if (icon_setting) {
+            Main.panel._rightBox.remove_child(indicator._button);
+        }
+        if (connected) indicator._disconnect_gpsd();
+        indicator.destroy();
+        Mainloop.source_remove(event);
+        Mainloop.source_remove(event2);
+        indicator = null;
+    } catch(e) {}
 }
