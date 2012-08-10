@@ -47,7 +47,8 @@ let settings, indicator;
 let event=null;
 let event2=null;
 let newLabel=" ";
-let connected, receiving, sockCl, sockCon, outStr, inStr, dInStr;
+let gpsEnabled = true;
+let connected, sockCl, sockCon, outStr, inStr, dInStr;
 let satshow, hdopshow, gdopshow, sattext, hdoptext, gdoptext, refinterval;
 
 function gps_indicator() {
@@ -215,154 +216,159 @@ gps_indicator.prototype = {
 
     _refresh_gps: function() {
         //global.log("GPS Icon Extension: Refreshing GPS");
-        if (connected && outStr !== null) {
-            let written = outStr.write('?POLL;', null);
-            if (written > -1) {
-                dInStr.read_line_async(0, null, this._refresh_gps_cb, null);
+        if (gpsEnabled){
+            if (connected && outStr !== null) {
+                let written = outStr.write('?POLL;', null);
+                if (written > -1) {
+                    dInStr.read_line_async(0, null, this._refresh_gps_cb, null);
+                }
+                else {
+                    connected = false;
+                    this._connect_gpsd();
+                }
             }
             else {
-                connected = false;
                 this._connect_gpsd();
             }
         }
-        else {
-            this._connect_gpsd();
-        }
-    },
+},
 
-    _disconnect_gpsd: function() {
-        connected = false;
-        if (dInStr !== null) dInStr.clear_pending();
-        if (dInStr !== null) dInStr.close(null);
-        if (inStr !== null) inStr.close(null);
-        if (outStr !== null) outStr.close(null);
-        if (sockCon !== null) sockCon.close(null);
-        if (sockCon !== null) sockCon = null;
-        sockCl = null;
-    },
+_disconnect_gpsd: function() {
+    connected = false;
+    if (dInStr !== null) dInStr.clear_pending();
+    if (dInStr !== null) dInStr.close(null);
+    if (inStr !== null) inStr.close(null);
+    if (outStr !== null) outStr.close(null);
+    if (sockCon !== null) sockCon.close(null);
+    if (sockCon !== null) sockCon = null;
+    sockCl = null;
+},
 
-    _connect_gpsd: function() {
-        sockCl = new Gio.SocketClient();
-        try {
-            sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
-        }
-        catch(e){}
-        if (sockCon == null) {
-            newLabel = "GPS off";
-            this.statusLabel.set_text(newLabel);
-            this._update_menu();
-        }
-        else {
-            newLabel = "Connecting";
-            this.statusLabel.set_text(newLabel);
-            this._update_menu();
-
-            outStr = sockCon.get_output_stream();
-            inStr = sockCon.get_input_stream();
-            dInStr = Gio.DataInputStream.new(inStr);
-
-            dInStr.read_line(null); // VERSION
-            outStr.write('?WATCH={"enable":true,"json":false};', null);
-            dInStr.read_line(null); // DEVICES
-            dInStr.read_line(null); // WATCH
-
-            let written = outStr.write('?POLL;', null);
-            if (written > -1) {
-                dInStr.read_line_async(0, null, this._refresh_gps_cb, written);
-                connected = true;
-            }
-        }
-    },
-
-    _refresh_gps_cb_dummy: function(object, res, data) {
-        dInStr.read_line_finish(res, object);
-    },
-
-    _refresh_gps_cb: function(object, res, data) {
-        let gpsData = dInStr.read_line_finish(res, object).toString();
-        let hdop, gdop, satNo;
-
-        let indexSat = gpsData.match(/"used":true/g);
-        if (indexSat !== null) {
-            satNo = indexSat.length;
-        }
-        else {
-            satNo = 0;
-        }
-
-        // "hdop":4.07,"gdop":10.59,"pdop":8.56
-        let indexHdop = gpsData.search("hdop");
-        if (indexHdop !== -1) {
-            hdop = gpsData.slice(indexHdop + 6, indexHdop + 6 + 7)
-            hdop = hdop.split(",")[0];
-        }
-
-        let indexGdop = gpsData.search("gdop");
-        if (indexGdop !== -1) {
-            gdop = gpsData.slice(indexGdop + 6, indexGdop + 6 + 7)
-            gdop = gdop.split(",")[0];
-        }
-
-        newLabel = "";
-        if (satshow) {
-            if (!isNaN(satNo)){
-                newLabel = newLabel + sattext + satNo + " ";
-            }
-            else {
-                newLabel = newLabel + sattext + "? ";
-            }
-        }
-        if (hdopshow) {
-            if (!isNaN(parseFloat(hdop))){
-                newLabel = newLabel + hdoptext +
-                parseFloat(hdop).toFixed(1) + " ";
-            }
-            else {
-                newLabel = newLabel + hdoptext + "? ";
-            }
-        }
-        if (gdopshow) {
-            if (!isNaN(parseFloat(gdop))){
-                newLabel = newLabel + gdoptext +
-                parseFloat(gdop).toFixed(1);
-            }
-            else {
-                newLabel = newLabel + gdoptext + "? ";
-            }
-        }
-        if (newLabel == "" ||
-            newLabel.indexOf("undefined") > -1){
-            newLabel = "No GPS data";
-        }
-        //        this.statusLabel.set_text(newLabel);
-        //        this._update_menu();
-        indicator.statusLabel.set_text(newLabel);
-        indicator._update_menu();
-    },
-
-    _enable_gps: function() {
-        connected = false;
-        let enable_setting = settings.get_string(SETTING_ENABLE);
-        let enabled = GLib.spawn_command_line_async(enable_setting);
-        if (enabled){
-            this.statusLabel.set_text("GPS enabled!");
-        } else
-            this.statusLabel.set_text("Enabling failed! " + enabled);
-        newLabel = "No GPS data";
-        this._refresh_gps_in(2);
-    },
-
-    _disable_gps: function() {
-        this._disconnect_gpsd();
-        let disable_setting = settings.get_string(SETTING_DISABLE);
-        let disabled = GLib.spawn_command_line_async(disable_setting);
-        if (disabled){
-            this.statusLabel.set_text("GPS disabled!");
-        } else
-            this.statusLabel.set_text("Disabling failed! " + disabled);
-        newLabel = "GPS off";
-        this._refresh_gps_in(2);
+_connect_gpsd: function() {
+    sockCl = new Gio.SocketClient();
+    try {
+        sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
     }
+    catch(e){}
+    if (sockCon == null) {
+        newLabel = "GPS off";
+        gpsEnabled = false;
+        this.statusLabel.set_text(newLabel);
+        this._update_menu();
+    }
+    else {
+        newLabel = "Connecting";
+        this.statusLabel.set_text(newLabel);
+        this._update_menu();
+
+        outStr = sockCon.get_output_stream();
+        inStr = sockCon.get_input_stream();
+        dInStr = Gio.DataInputStream.new(inStr);
+
+        dInStr.read_line(null); // VERSION
+        outStr.write('?WATCH={"enable":true,"json":false};', null);
+        dInStr.read_line(null); // DEVICES
+        dInStr.read_line(null); // WATCH
+
+        let written = outStr.write('?POLL;', null);
+        if (written > -1) {
+            dInStr.read_line_async(0, null, this._refresh_gps_cb, written);
+            connected = true;
+        }
+    }
+},
+
+_refresh_gps_cb_dummy: function(object, res, data) {
+    dInStr.read_line_finish(res, object);
+},
+
+_refresh_gps_cb: function(object, res, data) {
+    let gpsData = dInStr.read_line_finish(res, object).toString();
+    let hdop, gdop, satNo;
+
+    let indexSat = gpsData.match(/"used":true/g);
+    if (indexSat !== null) {
+        satNo = indexSat.length;
+    }
+    else {
+        satNo = 0;
+    }
+
+    // "hdop":4.07,"gdop":10.59,"pdop":8.56
+    let indexHdop = gpsData.search("hdop");
+    if (indexHdop !== -1) {
+        hdop = gpsData.slice(indexHdop + 6, indexHdop + 6 + 7)
+        hdop = hdop.split(",")[0];
+    }
+
+    let indexGdop = gpsData.search("gdop");
+    if (indexGdop !== -1) {
+        gdop = gpsData.slice(indexGdop + 6, indexGdop + 6 + 7)
+        gdop = gdop.split(",")[0];
+    }
+
+    newLabel = "";
+    if (satshow) {
+        if (!isNaN(satNo)){
+            newLabel = newLabel + sattext + satNo + " ";
+        }
+        else {
+            newLabel = newLabel + sattext + "? ";
+        }
+    }
+    if (hdopshow) {
+        if (!isNaN(parseFloat(hdop))){
+            newLabel = newLabel + hdoptext +
+            parseFloat(hdop).toFixed(1) + " ";
+        }
+        else {
+            newLabel = newLabel + hdoptext + "? ";
+        }
+    }
+    if (gdopshow) {
+        if (!isNaN(parseFloat(gdop))){
+            newLabel = newLabel + gdoptext +
+            parseFloat(gdop).toFixed(1);
+        }
+        else {
+            newLabel = newLabel + gdoptext + "? ";
+        }
+    }
+    if (newLabel == "" ||
+        newLabel.indexOf("undefined") > -1){
+        newLabel = "No GPS data";
+    }
+    //        this.statusLabel.set_text(newLabel);
+    //        this._update_menu();
+    indicator.statusLabel.set_text(newLabel);
+    indicator._update_menu();
+},
+
+_enable_gps: function() {
+    gpsEnabled = true;
+    connected = false;
+    let enable_setting = settings.get_string(SETTING_ENABLE);
+    let enabled = GLib.spawn_command_line_async(enable_setting);
+    if (enabled){
+        this.statusLabel.set_text("GPS enabled!");
+    } else
+        this.statusLabel.set_text("Enabling failed! " + enabled);
+    newLabel = "No GPS data";
+    this._refresh_gps_in(2);
+},
+
+_disable_gps: function() {
+    gpsEnabled = false;
+    this._disconnect_gpsd();
+    let disable_setting = settings.get_string(SETTING_DISABLE);
+    let disabled = GLib.spawn_command_line_async(disable_setting);
+    if (disabled){
+        this.statusLabel.set_text("GPS disabled!");
+    } else
+        this.statusLabel.set_text("Disabling failed! " + disabled);
+    newLabel = "GPS off";
+    this._refresh_gps_in(2);
+}
 }
 
 function init() {
