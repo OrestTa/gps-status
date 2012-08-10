@@ -29,6 +29,83 @@ let settings;
 let boolSettings;
 let stringSettings;
 
+function init() {
+    Convenience.initTranslations();
+    settings = Convenience.getSettings();
+
+    boolSettings = {
+        /*icon: {
+            label: _("Show icon"),
+            help: _("Show an icon next to the status text")
+        },*/
+        satshow: {
+            label: _("Show satellite count"),
+            help: _("Show the number of available satellites")
+        },
+        hdopshow: {
+            label: _("Show HDOP"),
+            help: _("Show the horizontal dilution of precision coefficient")
+        },
+        gdopshow: {
+            label: _("Show GDOP"),
+            help: _("Show the geometric dilution of precision coefficient")
+        }
+    };
+
+    stringSettings = {
+        enable: {
+            label: _("GPS enable command"),
+            help: _("The command used to enable your GPS")
+        },
+        disable: {
+            label: _("GPS disable command"),
+            help: _("The command used to disable your GPS")
+        },
+        sattext: {
+            label: _("Satellite count text"),
+            help: _("The text shown in the panel before the satellite number")
+        },
+        hdoptext: {
+            label: _("HDOP text"),
+            help: _("The text shown in the panel before the horizontal dilution of precision coefficient")
+        },
+        gdoptext: {
+            label: _("GDOP text"),
+            help: _("The text shown in the panel before the geometric dilution of precision coefficient")
+        },
+        refinterval: {
+            label: _("Refresh interval [s]"),
+            help: _("The interval between polls to gpsd")
+        }
+    };
+}
+
+function buildPrefsWidget() {
+    let frame = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        border_width: 10
+    });
+    let vbox = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        margin: 20,
+        margin_top: 10
+    });
+
+    for (setting in boolSettings) {
+        let hbox = _createBoolSetting(setting);
+        vbox.add(hbox);
+    }
+    for (setting in stringSettings) {
+        let hbox = createStringSetting(setting);
+        vbox.add(hbox);
+    }
+
+    frame.add(vbox);
+    frame.show_all();
+
+    return frame;
+}
+
 function _createBoolSetting(setting) {
     let hbox = new Gtk.Box({
         orientation: Gtk.Orientation.HORIZONTAL
@@ -88,87 +165,4 @@ function createStringSetting(setting) {
     hbox.add(setting_string);
 
     return hbox;
-}
-
-/*
-   Shell-extensions handlers
- */
-
-function init() {
-    Convenience.initTranslations();
-    settings = Convenience.getSettings();
-
-    boolSettings = {
-        /*icon: {
-            label: _("Show icon"),
-            help: _("Show an icon next to the status text")
-        },*/
-        satshow: {
-            label: _("Show satellite number"),
-            help: _("Show the number of available satellites")
-        },
-        hdopshow: {
-            label: _("Show HDOP"),
-            help: _("Show the horizontal dilution of precision coefficient")
-        },
-        gdopshow: {
-            label: _("Show GDOP"),
-            help: _("Show the geometric dilution of precision coefficient")
-        }
-    };
-
-    stringSettings = {
-        enable: {
-            label: _("GPS enable command"),
-            help: _("The command used to enable your GPS")
-        },
-        disable: {
-            label: _("GPS disable command"),
-            help: _("The command used to disable your GPS")
-        },
-        sattext: {
-            label: _("GPS enable command"),
-            help: _("The text shown in the panel before the satellite number")
-        },
-        hdoptext: {
-            label: _("HDOP text"),
-            help: _("The text shown in the panel before the horizontal dilution of precision coefficient")
-        },
-        gdoptext: {
-            label: _("GDOP text"),
-            help: _("The text shown in the panel before the geometric dilution of precision coefficient")
-        },
-        refinterval: {
-            label: _("Refresh interval [s]"),
-            help: _("The interval between polls to gpsd")
-        }
-    };
-}
-
-function buildPrefsWidget() {
-    let frame = new Gtk.Box({
-        orientation: Gtk.Orientation.VERTICAL,
-        border_width: 10
-    });
-    let vbox = new Gtk.Box({
-        orientation: Gtk.Orientation.VERTICAL,
-        margin: 20,
-        margin_top: 10
-    });
-
-    // Add all string settings
-    for (setting in stringSettings) {
-        let hbox = createStringSetting(setting);
-        vbox.add(hbox);
-    }
-    // Add all bool settings
-    for (setting in boolSettings) {
-        let hbox = _createBoolSetting(setting);
-        vbox.add(hbox);
-    }
-
-    frame.add(vbox);
-    frame.show_all();
-
-    return frame;
 }

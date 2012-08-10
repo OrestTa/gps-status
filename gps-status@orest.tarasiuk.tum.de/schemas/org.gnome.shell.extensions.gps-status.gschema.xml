@@ -34,7 +34,7 @@
         </key>
         <key name="sattext" type="s">
             <default>"Sat: "</default>
-            <summary>GPS satellites text</summary>
+            <summary>Satellite count text</summary>
             <description>The text shown in the panel before the satellite number</description>
         </key>
         <key name="hdoptext" type="s">
