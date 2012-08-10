@@ -382,15 +382,13 @@ function enable() {
 }
 
 function disable() {
-    try {
-        let icon_setting = settings.get_boolean(SETTING_ICON);
-        if (icon_setting) {
-            Main.panel._rightBox.remove_child(indicator._button);
-        }
-        if (connected) indicator._disconnect_gpsd();
-        indicator.destroy();
-        Mainloop.source_remove(event);
-        Mainloop.source_remove(event2);
-        indicator = null;
-    } catch(e) {}
+    let icon_setting = settings.get_boolean(SETTING_ICON);
+    if (icon_setting) {
+        Main.panel._rightBox.remove_child(indicator._button);
+    }
+    if (connected) indicator._disconnect_gpsd();
+    indicator.destroy();
+    Mainloop.source_remove(event);
+    Mainloop.source_remove(event2);
+    indicator = null;
 }
