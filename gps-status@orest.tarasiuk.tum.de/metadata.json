@@ -6,5 +6,5 @@
     "description": "This is an indicator showing the current GPS status. You can have it display the number of currently visible satellites, the HDOP and the GDOP. You can also use it to enable and disable your GPS by executing a command of your choosing. The refresh interval can be adjusted.###Requirements: gpsd.###Tested under Arch Linux with Gnome Shell 3.4.2 and gpsd 3.6-2. Hardware: Qualcomm Gobi 2000 (requires activating via /dev/ttyUSB2 on each boot/resume; this can be automated with a script, which can then be executed from the menu).",
     "url": "https://gitorious.org/gs-extensions/gps-status",
     "settings-schema": "org.gnome.shell.extensions.gps-status",
-    "gettext-domain": "gnome-shell-extensions"
+    "gettext-domain": "gps-status"
 }

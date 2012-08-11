@@ -19,6 +19,7 @@
  */
 
 const DBus = imports.dbus;
+const Shell = imports.gi.Shell;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const St = imports.gi.St;
@@ -31,6 +32,11 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Tweener = imports.ui.tweener;
 const Convenience = ExtensionUtils.getCurrentExtension().imports.convenience;
+
+const Name = "gps-status";
+const UUID = Name + "@orest.tarasiuk.tum.de";
+const Gettext = imports.gettext.domain(Name);
+const _ = Gettext.gettext;
 
 const SETTING_ICON = "icon";
 const SETTING_SATSHOW = "satshow";
@@ -152,27 +158,33 @@ gps_indicator.prototype = {
     },
 
     _fill_menu: function() {
-        this._myMenu = new PopupMenu.PopupMenuItem(_("Refresh now"));
-        this.menu.addMenuItem(this._myMenu);
-        this._myMenu.connect("activate", Lang.bind(this, this._refresh_gps));
+        this.newMenuItem = new PopupMenu.PopupMenuItem(_("Refresh now"));
+        this.menu.addMenuItem(this.newMenuItem);
+        this.newMenuItem.connect("activate", Lang.bind(this, this._refresh_gps));
 
-        this._myMenu = new PopupMenu.PopupMenuItem(_("Enable GPS"));
-        this.menu.addMenuItem(this._myMenu);
-        this._myMenu.connect("activate", Lang.bind(this, this._enable_gps));
+        this.newMenuItem = new PopupMenu.PopupMenuItem(_("Enable GPS"));
+        this.menu.addMenuItem(this.newMenuItem);
+        this.newMenuItem.connect("activate", Lang.bind(this, this._enable_gps));
 
-        this._myMenu = new PopupMenu.PopupMenuItem(_("Disable GPS"));
-        this.menu.addMenuItem(this._myMenu);
-        this._myMenu.connect("activate", Lang.bind(this, this._disable_gps));
+        this.newMenuItem = new PopupMenu.PopupMenuItem(_("Disable GPS"));
+        this.menu.addMenuItem(this.newMenuItem);
+        this.newMenuItem.connect("activate", Lang.bind(this, this._disable_gps));
 
-        this._myMenuStatus = new PopupMenu.PopupMenuItem(_("No GPS data"));
-        this.menu.addMenuItem(this._myMenuStatus);
-        this._myMenuStatus.connect("activate", Lang.bind(this, this._refresh_gps));
+        this.newMenuItem = new PopupMenu.PopupMenuItem(_("Applet Settings"));
+        this.menu.addMenuItem(this.newMenuItem);
+        this.newMenuItem.connect("activate", Lang.bind(this, this._launchPrefs));
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        this.newMenuItem = new PopupMenu.PopupMenuItem(_("No GPS data"));
+        this.menu.addMenuItem(this.newMenuItem);
+        this.newMenuItem.connect("activate", Lang.bind(this, this._refresh_gps));
     },
 
     _update_menu: function() {
         this._myMenuStatus = new PopupMenu.PopupMenuItem(_(newLabel));
-        if (this.menu.box.get_children().length > 2){
-            this.menu.box.get_children()[3].destroy();
+        if (this.menu.box.get_children().length > 4){
+            this.menu.box.get_children()[5].destroy();
         }
         this.menu.addMenuItem(this._myMenuStatus);
         this._myMenuStatus.connect("activate", Lang.bind(this, this._refresh_gps));
@@ -363,6 +375,14 @@ gps_indicator.prototype = {
             this.statusLabel.set_text("Disabling failed! " + disabled);
         newLabel = "GPS off";
         this._refresh_gps_in(2);
+    },
+
+    _launchPrefs: function() {
+        let appSys = Shell.AppSystem.get_default();
+        let app = appSys.lookup_app('gnome-shell-extension-prefs.desktop');
+        app.launch(global.display.get_current_time_roundtrip(),
+            ['extension:///' + UUID], -1, null);
+        this.menu.close();
     }
 }
 

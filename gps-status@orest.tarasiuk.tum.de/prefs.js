@@ -22,7 +22,10 @@ const Gtk = imports.gi.Gtk;
 const Lang = imports.lang;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Convenience = ExtensionUtils.getCurrentExtension().imports.convenience;
-const Gettext = imports.gettext.domain("gps-status");
+
+const Name = "gps-status";
+const UUID = Name + "@orest.tarasiuk.tum.de";
+const Gettext = imports.gettext.domain(Name);
 const _ = Gettext.gettext;
 
 let settings;

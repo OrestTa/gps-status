@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="gps-status">
-    <schema path="/org/gnome/shell/extensions/gps-status/" id="org.gnome.shell.extensions.gps-status">
+    <schema path="/org/gnome/shell/extensions/gps-status/"
+    id="org.gnome.shell.extensions.gps-status">
         <key name="icon" type="b">
             <default>false</default>
             <summary>Show icon</summary>
