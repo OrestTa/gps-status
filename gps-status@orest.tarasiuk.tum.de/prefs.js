@@ -56,6 +56,10 @@ function init() {
     };
 
     stringSettings = {
+        refinterval: {
+            label: _("Refresh interval [s]"),
+            help: _("The interval between polls to gpsd")
+        },
         enable: {
             label: _("GPS enable command"),
             help: _("The command used to enable your GPS")
@@ -75,10 +79,6 @@ function init() {
         gdoptext: {
             label: _("GDOP text"),
             help: _("The text shown in the panel before the geometric dilution of precision coefficient")
-        },
-        refinterval: {
-            label: _("Refresh interval [s]"),
-            help: _("The interval between polls to gpsd")
         }
     };
 }

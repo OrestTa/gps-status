@@ -42,6 +42,7 @@ const SETTING_ICON = "icon";
 const SETTING_SATSHOW = "satshow";
 const SETTING_HDOPSHOW = "hdopshow";
 const SETTING_GDOPSHOW = "gdopshow";
+const SETTING_COUNTMENUSHOW = "countmenushow";
 const SETTING_ENABLE = "enable";
 const SETTING_DISABLE = "disable";
 const SETTING_SATTEXT = "sattext";
@@ -56,6 +57,7 @@ let newLabel=" ";
 let gpsEnabled = true;
 let connected, sockCl, sockCon, outStr, inStr, dInStr;
 let satshow, hdopshow, gdopshow, sattext, hdoptext, gdoptext, refinterval;
+let countmenushow = false;
 
 function gps_indicator() {
     this._init.apply(this, arguments);
@@ -104,14 +106,14 @@ gps_indicator.prototype = {
         this._refresh_panel();
     },
 
-    _reinit_commands: function(){
+    _reinit_commands: function() {
     },
 
-    _reinit_text: function(){
+    _reinit_text: function() {
         this._refresh_panel();
     },
 
-    _reinit_refinterval: function(){
+    _reinit_refinterval: function() {
         Mainloop.source_remove(event);
         refinterval = settings.get_string(SETTING_REFINTRVL);
         event = GLib.timeout_add_seconds(0, refinterval, Lang.bind(this, function () {
@@ -120,7 +122,7 @@ gps_indicator.prototype = {
         }));
     },
 
-    _init: function(){
+    _init: function() {
         PanelMenu.SystemStatusButton.prototype._init.call(this, "gps");
 
         this.statusLabel = new St.Label({
@@ -136,6 +138,8 @@ gps_indicator.prototype = {
 
         this._fill_menu();
         this._refresh_panel();
+        this.actor.connect('button-press-event',
+            Lang.bind(this, this._refresh_panel));
 
         //update every N seconds
         event = GLib.timeout_add_seconds(0, refinterval, Lang.bind(this, function () {
@@ -174,23 +178,26 @@ gps_indicator.prototype = {
         this.menu.addMenuItem(this.newMenuItem);
         this.newMenuItem.connect("activate", Lang.bind(this, this._launchPrefs));
 
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        this.newMenuItem = new PopupMenu.PopupMenuItem(_("No GPS data"));
-        this.menu.addMenuItem(this.newMenuItem);
-        this.newMenuItem.connect("activate", Lang.bind(this, this._refresh_gps));
+        if (countmenushow) {
+            this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            this.newMenuItem = new PopupMenu.PopupMenuItem(_("No GPS data"));
+            this.menu.addMenuItem(this.newMenuItem);
+            this.newMenuItem.connect("activate", Lang.bind(this, this._refresh_gps));
+        }
     },
 
     _update_menu: function() {
-        this._myMenuStatus = new PopupMenu.PopupMenuItem(_(newLabel));
-        if (this.menu.box.get_children().length > 4){
-            this.menu.box.get_children()[5].destroy();
+        if (countmenushow) {
+            this._myMenuStatus = new PopupMenu.PopupMenuItem(_(newLabel));
+            if (this.menu.box.get_children().length > 4) {
+                this.menu.box.get_children()[5].destroy();
+            }
+            this.menu.addMenuItem(this._myMenuStatus);
+            this._myMenuStatus.connect("activate", Lang.bind(this, this._refresh_gps));
         }
-        this.menu.addMenuItem(this._myMenuStatus);
-        this._myMenuStatus.connect("activate", Lang.bind(this, this._refresh_gps));
     },
 
-    _create_icon: function(){
+    _create_icon: function() {
         //TODO: Implement some nice icon(s) as GPS quality indicator
         this._button = new St.Button();
         this._button.set_child(new St.Icon({
@@ -217,7 +224,7 @@ gps_indicator.prototype = {
 
     _refresh_gps: function() {
         //global.log("GPS Icon Extension: Refreshing GPS");
-        if (gpsEnabled){
+        if (gpsEnabled) {
             if (connected && outStr !== null) {
                 let written = outStr.write('?POLL;', null);
                 if (written > -1) {
@@ -250,7 +257,7 @@ gps_indicator.prototype = {
         try {
             sockCon = sockCl.connect_to_host("localhost:2947", 2947, null);
         }
-        catch(e){}
+        catch(e) {}
         if (sockCon == null) {
             newLabel = "GPS off";
             gpsEnabled = false;
@@ -316,7 +323,7 @@ gps_indicator.prototype = {
 
         newLabel = "";
         if (satshow) {
-            if (!isNaN(satNo)){
+            if (!isNaN(satNo)) {
                 newLabel = newLabel + sattext + satNo + " ";
             }
             else {
@@ -324,7 +331,7 @@ gps_indicator.prototype = {
             }
         }
         if (hdopshow) {
-            if (!isNaN(parseFloat(hdop))){
+            if (!isNaN(parseFloat(hdop))) {
                 newLabel = newLabel + hdoptext +
                 parseFloat(hdop).toFixed(1) + " ";
             }
@@ -333,7 +340,7 @@ gps_indicator.prototype = {
             }
         }
         if (gdopshow) {
-            if (!isNaN(parseFloat(gdop))){
+            if (!isNaN(parseFloat(gdop))) {
                 newLabel = newLabel + gdoptext +
                 parseFloat(gdop).toFixed(1);
             }
@@ -342,7 +349,7 @@ gps_indicator.prototype = {
             }
         }
         if (newLabel == "" ||
-            newLabel.indexOf("undefined") > -1){
+            newLabel.indexOf("undefined") > -1) {
             newLabel = "No GPS data";
         }
         //        this.statusLabel.set_text(newLabel);
@@ -356,7 +363,7 @@ gps_indicator.prototype = {
         connected = false;
         let enable_setting = settings.get_string(SETTING_ENABLE);
         let enabled = GLib.spawn_command_line_async(enable_setting);
-        if (enabled){
+        if (enabled) {
             this.statusLabel.set_text("GPS enabled!");
         } else
             this.statusLabel.set_text("Enabling failed! " + enabled);
@@ -369,7 +376,7 @@ gps_indicator.prototype = {
         this._disconnect_gpsd();
         let disable_setting = settings.get_string(SETTING_DISABLE);
         let disabled = GLib.spawn_command_line_async(disable_setting);
-        if (disabled){
+        if (disabled) {
             this.statusLabel.set_text("GPS disabled!");
         } else
             this.statusLabel.set_text("Disabling failed! " + disabled);
