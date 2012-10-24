@@ -35,8 +35,7 @@ const Convenience = ExtensionUtils.getCurrentExtension().imports.convenience;
 
 const Name = "gps-status";
 const UUID = Name + "@orest.tarasiuk.tum.de";
-const Gettext = imports.gettext.domain(Name);
-const _ = Gettext.gettext;
+const _ = imports.gettext.domain(UUID).gettext;
 
 const SETTING_ICON = "icon";
 const SETTING_SATSHOW = "satshow";
@@ -58,6 +57,7 @@ let gpsEnabled = true;
 let connected, sockCl, sockCon, outStr, inStr, dInStr;
 let satshow, hdopshow, gdopshow, sattext, hdoptext, gdoptext, refinterval;
 let countmenushow = false;
+let settingsIdArray = [];
 
 function gps_indicator() {
     this._init.apply(this, arguments);
@@ -67,26 +67,26 @@ gps_indicator.prototype = {
     __proto__: PanelMenu.SystemStatusButton.prototype,
 
     _settings_connexion: function() {
-        settings.connect("changed::" + SETTING_ICON,
+        settingsIdArray[0] = settings.connect("changed::" + SETTING_ICON,
             Lang.bind(this, this._reinit_icon));
-        settings.connect("changed::" + SETTING_SATSHOW,
+        settingsIdArray[1] = settings.connect("changed::" + SETTING_SATSHOW,
             Lang.bind(this, this._reinit_show));
-        settings.connect("changed::" + SETTING_HDOPSHOW,
+        settingsIdArray[2] = settings.connect("changed::" + SETTING_HDOPSHOW,
             Lang.bind(this, this._reinit_show));
-        settings.connect("changed::" + SETTING_GDOPSHOW,
+        settingsIdArray[3] = settings.connect("changed::" + SETTING_GDOPSHOW,
             Lang.bind(this, this._reinit_show));
 
-        settings.connect("changed::" + SETTING_ENABLE,
+        settingsIdArray[4] = settings.connect("changed::" + SETTING_ENABLE,
             Lang.bind(this, this._reinit_commands));
-        settings.connect("changed::" + SETTING_DISABLE,
+        settingsIdArray[5] = settings.connect("changed::" + SETTING_DISABLE,
             Lang.bind(this, this._reinit_commands));
-        settings.connect("changed::" + SETTING_SATTEXT,
+        settingsIdArray[6] = settings.connect("changed::" + SETTING_SATTEXT,
             Lang.bind(this, this._reinit_text));
-        settings.connect("changed::" + SETTING_HDOPTEXT,
+        settingsIdArray[7] = settings.connect("changed::" + SETTING_HDOPTEXT,
             Lang.bind(this, this._reinit_text));
-        settings.connect("changed::" + SETTING_GDOPTEXT,
+        settingsIdArray[8] = settings.connect("changed::" + SETTING_GDOPTEXT,
             Lang.bind(this, this._reinit_text));
-        settings.connect("changed::" + SETTING_REFINTRVL,
+        settingsIdArray[9] = settings.connect("changed::" + SETTING_REFINTRVL,
             Lang.bind(this, this._reinit_refinterval));
     },
 
@@ -410,12 +410,17 @@ function enable() {
 }
 
 function disable() {
-    let icon_setting = settings.get_boolean(SETTING_ICON);
-    if (icon_setting) {
+    if (settings.get_boolean(SETTING_ICON)) {
         Main.panel._rightBox.remove_child(indicator._button);
     }
+    if (settings !== null && settingsIdArray !== null) {
+        for (let i = 0; i < settingsIdArray.length; i++) {
+            if (settingsIdArray[i] > -1)
+                settings.disconnect(settingsIdArray[i]);
+        }
+    }
     if (connected) indicator._disconnect_gpsd();
-    indicator.destroy();
+    if (indicator !== null) indicator.destroy();
     Mainloop.source_remove(event);
     Mainloop.source_remove(event2);
     indicator = null;
