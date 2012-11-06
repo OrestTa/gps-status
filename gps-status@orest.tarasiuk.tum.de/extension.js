@@ -123,6 +123,8 @@ gps_indicator.prototype = {
     },
 
     _init: function() {
+        gpsEnabled = true;
+
         PanelMenu.SystemStatusButton.prototype._init.call(this, "gps");
 
         this.statusLabel = new St.Label({
@@ -259,6 +261,7 @@ gps_indicator.prototype = {
         }
         catch(e) {}
         if (sockCon == null) {
+            //global.log("GPS Icon Extension: sockCon is null");
             newLabel = "GPS off";
             gpsEnabled = false;
             this.statusLabel.set_text(newLabel);
