@@ -53,7 +53,7 @@ let settings, indicator;
 let event=null;
 let event2=null;
 let newLabel=" ";
-let gpsEnabled = true;
+let gpsEnabled;
 let connected, sockCl, sockCon, outStr, inStr, dInStr;
 let satshow, hdopshow, gdopshow, sattext, hdoptext, gdoptext, refinterval;
 let countmenushow = false;
@@ -123,8 +123,6 @@ gps_indicator.prototype = {
     },
 
     _init: function() {
-        gpsEnabled = true;
-
         PanelMenu.SystemStatusButton.prototype._init.call(this, "gps");
 
         this.statusLabel = new St.Label({
@@ -215,8 +213,8 @@ gps_indicator.prototype = {
 
     _refresh_gps_in: function(s) {
         event2 = GLib.timeout_add_seconds(0, s, Lang.bind(this, function () {
-            this._update_menu();
-            this.statusLabel.set_text(newLabel);
+            //this._update_menu();
+            //this.statusLabel.set_text(newLabel);
             this._refresh_gps();
             this._update_menu();
             this.statusLabel.set_text(newLabel);
@@ -225,8 +223,8 @@ gps_indicator.prototype = {
     },
 
     _refresh_gps: function() {
-        //global.log("GPS Icon Extension: Refreshing GPS");
         if (gpsEnabled) {
+            //global.log("GPS Icon Extension: Refreshing GPS");
             if (connected && outStr !== null) {
                 let written = outStr.write('?POLL;', null);
                 if (written > -1) {
@@ -240,6 +238,11 @@ gps_indicator.prototype = {
             else {
                 this._connect_gpsd();
             }
+        }
+        else {
+            newLabel = "GPS off";
+            this.statusLabel.set_text(newLabel);
+            this._update_menu();
         }
     },
 
@@ -362,28 +365,28 @@ gps_indicator.prototype = {
     },
 
     _enable_gps: function() {
-        gpsEnabled = true;
-        connected = false;
         let enable_setting = settings.get_string(SETTING_ENABLE);
         let enabled = GLib.spawn_command_line_async(enable_setting);
         if (enabled) {
+            gpsEnabled = true;
+            connected = false;
             this.statusLabel.set_text("GPS enabled!");
+            newLabel = "No GPS data";
         } else
-            this.statusLabel.set_text("Enabling failed! " + enabled);
-        newLabel = "No GPS data";
+            this.statusLabel.set_text("Enabling failed: " + enabled);
         this._refresh_gps_in(2);
     },
 
     _disable_gps: function() {
-        gpsEnabled = false;
         this._disconnect_gpsd();
         let disable_setting = settings.get_string(SETTING_DISABLE);
         let disabled = GLib.spawn_command_line_async(disable_setting);
         if (disabled) {
+            gpsEnabled = false;
             this.statusLabel.set_text("GPS disabled!");
+            newLabel = "GPS off";
         } else
-            this.statusLabel.set_text("Disabling failed! " + disabled);
-        newLabel = "GPS off";
+            this.statusLabel.set_text("Disabling failed: " + disabled);
         this._refresh_gps_in(2);
     },
 
@@ -404,7 +407,7 @@ function init() {
 function enable() {
     connected = false;
     indicator = new gps_indicator();
-    Main.panel.addToStatusArea("gps", indicator);
+    Main.panel.addToStatusArea("gps", indicator, 0);
     let icon_setting = settings.get_boolean(SETTING_ICON);
     if (icon_setting) {
         indicator._reinit_icon();
